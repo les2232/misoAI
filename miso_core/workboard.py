@@ -1,11 +1,12 @@
 import json
+import os
 from datetime import datetime
 from pathlib import Path
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-WORKBOARD_PATH = PROJECT_ROOT / "data" / "workboard.json"
-SNAPSHOTS_PATH = PROJECT_ROOT / "data" / "snapshots.jsonl"
+DEFAULT_WORKBOARD_PATH = PROJECT_ROOT / "data" / "workboard.json"
+DEFAULT_SNAPSHOTS_PATH = PROJECT_ROOT / "data" / "snapshots.jsonl"
 
 INACTIVE_STATUSES = {"done", "complete", "completed", "archived", "inactive"}
 
@@ -18,8 +19,24 @@ def _normalize_project_name(name):
     return name.strip().lower().replace(" ", "_")
 
 
+def _path_from_env(env_name, default_path):
+    configured_path = os.environ.get(env_name)
+    if configured_path:
+        return Path(configured_path).expanduser()
+    return default_path
+
+
+def get_workboard_path():
+    return _path_from_env("MISO_WORKBOARD_PATH", DEFAULT_WORKBOARD_PATH)
+
+
+def get_snapshots_path():
+    return _path_from_env("MISO_SNAPSHOTS_PATH", DEFAULT_SNAPSHOTS_PATH)
+
+
 def _ensure_data_dir():
-    WORKBOARD_PATH.parent.mkdir(parents=True, exist_ok=True)
+    get_workboard_path().parent.mkdir(parents=True, exist_ok=True)
+    get_snapshots_path().parent.mkdir(parents=True, exist_ok=True)
 
 
 def _empty_workboard():
@@ -29,11 +46,12 @@ def _empty_workboard():
 def load_workboard():
     _ensure_data_dir()
 
-    if not WORKBOARD_PATH.exists():
+    path = get_workboard_path()
+    if not path.exists():
         return _empty_workboard()
 
     try:
-        data = json.loads(WORKBOARD_PATH.read_text(encoding="utf-8"))
+        data = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError:
         return _empty_workboard()
 
@@ -49,7 +67,7 @@ def load_workboard():
 
 def save_workboard(workboard):
     _ensure_data_dir()
-    WORKBOARD_PATH.write_text(
+    get_workboard_path().write_text(
         json.dumps(workboard, indent=2, sort_keys=True),
         encoding="utf-8",
     )
@@ -200,17 +218,18 @@ def save_snapshot(project_name, summary, last_finished, blocker, next_step):
         "next_step": next_step.strip(),
     }
 
-    with SNAPSHOTS_PATH.open("a", encoding="utf-8") as file:
+    with get_snapshots_path().open("a", encoding="utf-8") as file:
         file.write(json.dumps(entry, sort_keys=True) + "\n")
 
     return entry
 
 
 def get_latest_snapshot(project_name=None):
-    if not SNAPSHOTS_PATH.exists():
+    path = get_snapshots_path()
+    if not path.exists():
         return None
 
-    lines = SNAPSHOTS_PATH.read_text(encoding="utf-8").splitlines()
+    lines = path.read_text(encoding="utf-8").splitlines()
     normalized_project_name = None
     if project_name:
         normalized_project_name = _normalize_project_name(project_name)
