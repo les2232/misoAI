@@ -3,6 +3,14 @@ from miso_core.identity import get_identity, print_identity
 from miso_core.memory import forget, list_memories, recall, remember
 from miso_core.responder import answer_question
 from miso_core.voice import print_voice_status, speak
+from miso_core.workboard import (
+    print_latest_snapshot,
+    print_project_resume,
+    print_recap,
+    run_add_project,
+    run_snapshot,
+    run_update_project,
+)
 
 
 EXIT_COMMANDS = {"exit", "quit", "close", "bye", "goodbye"}
@@ -16,6 +24,12 @@ def print_help():
     print("  status                 - Show Miso status")
     print("  checkin                - Start a daily check-in")
     print("  lastcheckin            - Show the latest saved check-in")
+    print("  recap                  - Show active workboard projects")
+    print("  addproject             - Add a local workboard project")
+    print("  updateproject          - Update a local workboard project")
+    print("  resume <project>       - Show a project's next-step recap")
+    print("  snapshot               - Save where you left off")
+    print("  lastsnapshot           - Show the latest saved snapshot")
     print("  voice                  - Show voice output status")
     print("  say <message>          - Speak a message out loud")
     print("  ask <question>         - Ask Miso a simple offline question")
@@ -146,6 +160,34 @@ def handle_command(command):
 
     if command_lower in ("lastcheckin", "last checkin", "latest checkin"):
         print_latest_checkin()
+        return True
+
+    if command_lower == "recap":
+        print_recap()
+        return True
+
+    if command_lower == "addproject":
+        run_add_project()
+        return True
+
+    if command_lower == "updateproject":
+        run_update_project()
+        return True
+
+    if command_lower.startswith("resume "):
+        project_name = command[7:].strip()
+        if not project_name:
+            print("Use: resume <project>")
+        else:
+            print_project_resume(project_name)
+        return True
+
+    if command_lower == "snapshot":
+        run_snapshot()
+        return True
+
+    if command_lower in ("lastsnapshot", "last snapshot", "latest snapshot"):
+        print_latest_snapshot()
         return True
 
     if command_lower == "voice":

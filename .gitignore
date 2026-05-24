@@ -4,3 +4,5 @@ __pycache__/
 .env
 data/memory.json
 data/checkins.jsonl
+data/workboard.json
+data/snapshots.jsonl
