@@ -73,6 +73,46 @@ def find_project_key(name, workboard=None):
     return None
 
 
+def find_project_matches(name, workboard=None):
+    if workboard is None:
+        workboard = load_workboard()
+
+    query = name.strip().lower()
+    if not query:
+        return []
+
+    matches = []
+    for key, project in workboard.get("projects", {}).items():
+        project_name = project.get("name", key)
+        if query in project_name.strip().lower():
+            matches.append((key, project))
+
+    return sorted(matches, key=lambda item: item[1].get("name", item[0]).lower())
+
+
+def resolve_project(name, workboard=None):
+    if workboard is None:
+        workboard = load_workboard()
+
+    projects = workboard.get("projects", {})
+    normalized = _normalize_project_name(name)
+
+    if normalized in projects:
+        return normalized, projects[normalized], []
+
+    for key, project in projects.items():
+        project_name = project.get("name", "")
+        if project_name.strip().lower() == name.strip().lower():
+            return key, project, []
+
+    matches = find_project_matches(name, workboard)
+    if len(matches) == 1:
+        key, project = matches[0]
+        return key, project, []
+
+    return None, None, matches
+
+
 def list_active_projects():
     projects = load_workboard().get("projects", {})
     active_projects = []
@@ -109,12 +149,44 @@ def upsert_project(name, status, last_finished, blocker, next_step, priority="")
 
 def get_project(name):
     workboard = load_workboard()
-    key = find_project_key(name, workboard)
+    key, project, _ = resolve_project(name, workboard)
 
     if key is None:
         return None
 
-    return workboard["projects"].get(key)
+    return project
+
+
+def rename_project(current_name, new_name):
+    workboard = load_workboard()
+    key, project, matches = resolve_project(current_name, workboard)
+
+    if matches:
+        return "ambiguous", matches
+
+    if key is None:
+        return "missing", None
+
+    clean_new_name = new_name.strip()
+    if not clean_new_name:
+        return "empty", None
+
+    new_key = _normalize_project_name(clean_new_name)
+    projects = workboard["projects"]
+
+    if new_key != key and new_key in projects:
+        return "exists", projects[new_key]
+
+    renamed_project = dict(project)
+    renamed_project["name"] = clean_new_name
+    renamed_project["updated_at"] = _now_local_iso()
+
+    if new_key != key:
+        del projects[key]
+
+    projects[new_key] = renamed_project
+    save_workboard(workboard)
+    return "renamed", renamed_project
 
 
 def save_snapshot(project_name, summary, last_finished, blocker, next_step):
@@ -179,7 +251,13 @@ def print_recap():
 
 
 def print_project_resume(project_name):
-    project = get_project(project_name)
+    _, project, matches = resolve_project(project_name)
+
+    if matches:
+        print("More than one project matched. Please be more specific:")
+        for _, match in matches:
+            print(f"  - {match.get('name', 'Unnamed project')}")
+        return
 
     if project is None:
         print(f"I do not have a project called '{project_name}' on the workboard yet.")
@@ -195,7 +273,13 @@ def print_project_resume(project_name):
 
 
 def print_project_handoff(project_name):
-    project = get_project(project_name)
+    _, project, matches = resolve_project(project_name)
+
+    if matches:
+        print("More than one project matched. Please be more specific:")
+        for _, match in matches:
+            print(f"  - {match.get('name', 'Unnamed project')}")
+        return
 
     if project is None:
         print(f"I do not have a project called '{project_name}' on the workboard yet.")
@@ -309,7 +393,13 @@ def run_update_project():
         print("Update canceled. A project name is required.")
         return
 
-    existing = get_project(project_name)
+    _, existing, matches = resolve_project(project_name)
+    if matches:
+        print("More than one project matched. Please be more specific:")
+        for _, match in matches:
+            print(f"  - {match.get('name', 'Unnamed project')}")
+        return
+
     if existing is None:
         print(f"I do not have '{project_name}' yet. Use addproject first.")
         return
@@ -323,6 +413,50 @@ def run_update_project():
 
     _, project = upsert_project(name, status, last_finished, blocker, next_step, priority)
     print(f"Updated project: {project['name']}")
+
+
+def run_rename_project():
+    print()
+    print("Rename project")
+    _print_privacy_note()
+    print()
+
+    projects = list_active_projects()
+    if projects:
+        print("Projects:")
+        for _, project in projects:
+            print(f"  - {project.get('name', 'Unnamed project')}")
+        print()
+
+    try:
+        current_name = input("Current project name: ").strip()
+        new_name = input("New project name: ").strip()
+    except (KeyboardInterrupt, EOFError):
+        print()
+        print("Rename project canceled.")
+        return
+
+    status, result = rename_project(current_name, new_name)
+
+    if status == "renamed":
+        print(f"Renamed project to: {result['name']}")
+        return
+
+    if status == "ambiguous":
+        print("More than one project matched. Please be more specific:")
+        for _, project in result:
+            print(f"  - {project.get('name', 'Unnamed project')}")
+        return
+
+    if status == "exists":
+        print(f"A project called '{result.get('name', new_name)}' already exists.")
+        return
+
+    if status == "empty":
+        print("Rename canceled. A new project name is required.")
+        return
+
+    print(f"I do not have '{current_name}' yet.")
 
 
 def run_snapshot():

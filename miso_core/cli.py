@@ -9,6 +9,7 @@ from miso_core.workboard import (
     print_project_resume,
     print_recap,
     run_add_project,
+    run_rename_project,
     run_snapshot,
     run_update_project,
 )
@@ -28,6 +29,7 @@ def print_help():
     print("  recap                  - Show active workboard projects")
     print("  addproject             - Add a local workboard project")
     print("  updateproject          - Update a local workboard project")
+    print("  renameproject          - Rename a local workboard project")
     print("  resume <project>       - Show a project's next-step recap")
     print("  handoff <project>      - Print a pasteable project handoff")
     print("  snapshot               - Save where you left off")
@@ -174,6 +176,10 @@ def handle_command(command):
 
     if command_lower == "updateproject":
         run_update_project()
+        return True
+
+    if command_lower == "renameproject":
+        run_rename_project()
         return True
 
     if command_lower.startswith("resume "):
