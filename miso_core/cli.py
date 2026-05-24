@@ -1,3 +1,4 @@
+from miso_core.checkin import print_latest_checkin, run_checkin
 from miso_core.identity import get_identity, print_identity
 from miso_core.memory import forget, list_memories, recall, remember
 from miso_core.responder import answer_question
@@ -12,6 +13,8 @@ def print_help():
     print("Miso commands:")
     print("  hello                  - Say hello")
     print("  status                 - Show Miso status")
+    print("  checkin                - Start a daily check-in")
+    print("  lastcheckin            - Show the latest saved check-in")
     print("  ask <question>         - Ask Miso a simple offline question")
     print("  remember <key> <value> - Save a local memory")
     print("  recall <key>           - Recall a local memory")
@@ -117,6 +120,14 @@ def handle_command(command):
 
     if command_lower == "help":
         print_help()
+        return True
+
+    if command_lower == "checkin":
+        run_checkin()
+        return True
+
+    if command_lower in ("lastcheckin", "last checkin", "latest checkin"):
+        print_latest_checkin()
         return True
 
     if command_lower.startswith("ask "):

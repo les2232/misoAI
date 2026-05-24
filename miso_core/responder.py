@@ -10,7 +10,8 @@ def answer_question(question):
     if q in ("who are you", "who are you?", "what are you", "what are you?"):
         return (
             "I am Miso, your tiny Raspberry Pi desk buddy. "
-            "Right now I can chat, show status, and remember simple local notes."
+            "Right now I can chat, show status, remember simple local notes, "
+            "and help with a daily check-in."
         )
 
     if "focus" in q or "overwhelmed" in q or "stuck" in q:
@@ -21,10 +22,13 @@ def answer_question(question):
 
     if "what can you do" in q or "what can you help" in q or "help me do" in q:
         return (
-            "I can say hello, show my status, remember local notes, recall memories, "
-            "forget memories, and answer simple offline questions. Soon I can grow into "
-            "voice, a dashboard, and safe assistant tools."
+            "I can say hello, show my status, run a daily check-in, remember local notes, "
+            "recall memories, forget memories, and answer simple offline questions. Soon I can "
+            "grow into voice, a dashboard, and safe assistant tools."
         )
+
+    if "check in" in q or "checkin" in q:
+        return "Type 'checkin' and I will walk you through a short daily check-in."
 
     if "remember" in q or "memory" in q or "memories" in q:
         memories = list_memories()
