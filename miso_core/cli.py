@@ -3,6 +3,10 @@ from miso_core.memory import forget, list_memories, recall, remember
 from miso_core.responder import answer_question
 
 
+EXIT_COMMANDS = {"exit", "quit", "close", "bye", "goodbye"}
+HELLO_COMMANDS = {"hello", "hi", "hey"}
+
+
 def print_help():
     print()
     print("Miso commands:")
@@ -14,7 +18,10 @@ def print_help():
     print("  memories               - List saved memory keys")
     print("  forget <key>           - Delete a local memory")
     print("  help                   - Show this help menu")
-    print("  exit                   - Close Miso")
+    print("  exit / close / bye     - Close Miso")
+    print()
+    print("Tip: You can also type a plain question, like:")
+    print("  what can you help me do?")
     print()
 
 
@@ -35,30 +42,44 @@ def handle_remember(command):
     parts = command.split(maxsplit=2)
 
     if len(parts) < 3:
-        print("Usage: remember <key> <value>")
-        print("Example: remember favorite_color purple")
+        print("Use: remember <key> <value>")
         return
 
     key = parts[1]
     value = parts[2]
-    saved_key = remember(key, value)
-    print(f"Okay, I remembered '{saved_key}'.")
+    remember(key, value)
+    print(f"Okay, I remembered '{key}'.")
 
 
 def handle_recall(command):
     parts = command.split(maxsplit=1)
 
     if len(parts) < 2:
-        print("Usage: recall <key>")
+        print("Use: recall <key>")
         return
 
     key = parts[1]
     value = recall(key)
 
     if value is None:
-        print(f"I don't have a memory for '{key}' yet.")
+        print(f"I do not remember '{key}' yet.")
     else:
         print(f"{key}: {value}")
+
+
+def handle_forget(command):
+    parts = command.split(maxsplit=1)
+
+    if len(parts) < 2:
+        print("Use: forget <key>")
+        return
+
+    key = parts[1]
+
+    if forget(key):
+        print(f"I forgot '{key}'.")
+    else:
+        print(f"I did not have a memory called '{key}'.")
 
 
 def handle_memories():
@@ -75,31 +96,52 @@ def handle_memories():
     print()
 
 
-def handle_forget(command):
-    parts = command.split(maxsplit=1)
+def handle_command(command):
+    command = command.strip()
+    command_lower = command.lower()
 
-    if len(parts) < 2:
-        print("Usage: forget <key>")
-        return
+    if not command:
+        return True
 
-    key = parts[1]
+    if command_lower in EXIT_COMMANDS:
+        print("Goodbye from Miso.")
+        return False
 
-    if forget(key):
-        print(f"I forgot '{key}'.")
-    else:
-        print(f"I did not have a memory for '{key}'.")
+    if command_lower in HELLO_COMMANDS:
+        print("Hi! I am Miso. I am awake and ready.")
+        return True
 
+    if command_lower == "status":
+        print_status()
+        return True
 
-def handle_ask(command):
-    parts = command.split(maxsplit=1)
+    if command_lower == "help":
+        print_help()
+        return True
 
-    if len(parts) < 2:
-        print("Usage: ask <question>")
-        print("Example: ask who are you")
-        return
+    if command_lower.startswith("ask "):
+        question = command[4:].strip()
+        print(answer_question(question))
+        return True
 
-    question = parts[1]
-    print(answer_question(question))
+    if command_lower.startswith("remember "):
+        handle_remember(command)
+        return True
+
+    if command_lower.startswith("recall "):
+        handle_recall(command)
+        return True
+
+    if command_lower == "memories":
+        handle_memories()
+        return True
+
+    if command_lower.startswith("forget "):
+        handle_forget(command)
+        return True
+
+    print(answer_question(command))
+    return True
 
 
 def run_cli():
@@ -108,29 +150,18 @@ def run_cli():
     print("Type 'help' to see what I can do.")
 
     while True:
-        command = input("miso> ").strip()
-
-        if command.lower() in ("exit", "quit", "q"):
+        try:
+            command = input("miso> ")
+        except KeyboardInterrupt:
+            print()
+            print("Goodbye from Miso.")
+            break
+        except EOFError:
+            print()
             print("Goodbye from Miso.")
             break
 
-        if command.lower() in ("help", "?"):
-            print_help()
-        elif command.lower() in ("hello", "hi"):
-            print("Hi! I am Miso. I am awake and ready.")
-        elif command.lower() == "status":
-            print_status()
-        elif command.lower().startswith("ask "):
-            handle_ask(command)
-        elif command.lower().startswith("remember "):
-            handle_remember(command)
-        elif command.lower().startswith("recall "):
-            handle_recall(command)
-        elif command.lower() == "memories":
-            handle_memories()
-        elif command.lower().startswith("forget "):
-            handle_forget(command)
-        elif command == "":
-            continue
-        else:
-            print(f"I don't know how to do '{command}' yet. Type 'help' for options.")
+        should_continue = handle_command(command)
+
+        if not should_continue:
+            break
