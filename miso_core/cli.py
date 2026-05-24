@@ -1,5 +1,6 @@
 from miso_core.identity import get_identity, print_identity
 from miso_core.memory import forget, list_memories, recall, remember
+from miso_core.responder import answer_question
 
 
 def print_help():
@@ -7,6 +8,7 @@ def print_help():
     print("Miso commands:")
     print("  hello                  - Say hello")
     print("  status                 - Show Miso status")
+    print("  ask <question>         - Ask Miso a simple offline question")
     print("  remember <key> <value> - Save a local memory")
     print("  recall <key>           - Recall a local memory")
     print("  memories               - List saved memory keys")
@@ -88,6 +90,18 @@ def handle_forget(command):
         print(f"I did not have a memory for '{key}'.")
 
 
+def handle_ask(command):
+    parts = command.split(maxsplit=1)
+
+    if len(parts) < 2:
+        print("Usage: ask <question>")
+        print("Example: ask who are you")
+        return
+
+    question = parts[1]
+    print(answer_question(question))
+
+
 def run_cli():
     print_identity()
     print()
@@ -106,6 +120,8 @@ def run_cli():
             print("Hi! I am Miso. I am awake and ready.")
         elif command.lower() == "status":
             print_status()
+        elif command.lower().startswith("ask "):
+            handle_ask(command)
         elif command.lower().startswith("remember "):
             handle_remember(command)
         elif command.lower().startswith("recall "):
