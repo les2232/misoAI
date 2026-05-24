@@ -1,9 +1,8 @@
+from miso_core.identity import print_identity
+
+
 def main():
-    print("Hello! I am Miso.")
-    print("Mode: desk buddy")
-    print("Version: 0.1.0")
-    print("Hardware: disabled for now")
-    print("Status: ready")
+    print_identity()
 
 
 if __name__ == "__main__":
