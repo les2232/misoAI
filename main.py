@@ -1,8 +1,8 @@
-from miso_core.identity import print_identity
+from miso_core.cli import run_cli
 
 
 def main():
-    print_identity()
+    run_cli()
 
 
 if __name__ == "__main__":
