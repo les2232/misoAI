@@ -85,7 +85,7 @@ def list_active_projects():
     return sorted(active_projects, key=lambda item: item[1].get("name", item[0]).lower())
 
 
-def upsert_project(name, status, last_finished, blocker, next_step):
+def upsert_project(name, status, last_finished, blocker, next_step, priority=""):
     workboard = load_workboard()
     key = find_project_key(name, workboard) or _normalize_project_name(name)
     existing = workboard["projects"].get(key, {})
@@ -97,6 +97,7 @@ def upsert_project(name, status, last_finished, blocker, next_step):
         "last_finished": last_finished.strip() or existing.get("last_finished", ""),
         "blocker": blocker.strip() or existing.get("blocker", ""),
         "next_step": next_step.strip() or existing.get("next_step", ""),
+        "priority": priority.strip() or existing.get("priority", ""),
         "created_at": existing.get("created_at", now),
         "updated_at": now,
     }
@@ -133,20 +134,30 @@ def save_snapshot(project_name, summary, last_finished, blocker, next_step):
     return entry
 
 
-def get_latest_snapshot():
+def get_latest_snapshot(project_name=None):
     if not SNAPSHOTS_PATH.exists():
         return None
 
     lines = SNAPSHOTS_PATH.read_text(encoding="utf-8").splitlines()
+    normalized_project_name = None
+    if project_name:
+        normalized_project_name = _normalize_project_name(project_name)
 
     for line in reversed(lines):
         if not line.strip():
             continue
 
         try:
-            return json.loads(line)
+            entry = json.loads(line)
         except json.JSONDecodeError:
             continue
+
+        if normalized_project_name is None:
+            return entry
+
+        entry_project = entry.get("project", "")
+        if _normalize_project_name(entry_project) == normalized_project_name:
+            return entry
 
     return None
 
@@ -183,6 +194,39 @@ def print_project_resume(project_name):
     print()
 
 
+def print_project_handoff(project_name):
+    project = get_project(project_name)
+
+    if project is None:
+        print(f"I do not have a project called '{project_name}' on the workboard yet.")
+        return
+
+    snapshot = get_latest_snapshot(project.get("name", project_name))
+
+    print()
+    print("Project handoff")
+    print("================")
+    print(f"Project: {project.get('name', project_name)}")
+    print(f"Status: {project.get('status', 'active')}")
+    print(f"Last thing finished: {project.get('last_finished', '') or 'not set'}")
+    print(f"Blocker: {project.get('blocker', '') or 'none noted'}")
+    print(f"Next step: {project.get('next_step', '') or 'not set'}")
+    print(f"Priority: {project.get('priority', '') or 'not set'}")
+    print()
+    print("Latest snapshot:")
+    if snapshot is None:
+        print("  none saved for this project")
+    else:
+        print(f"  Time: {snapshot.get('created_at', 'unknown')}")
+        print(f"  Where left off: {snapshot.get('summary', '') or 'not set'}")
+        print(f"  Last finished: {snapshot.get('last_finished', '') or 'not set'}")
+        print(f"  Blocker: {snapshot.get('blocker', '') or 'none noted'}")
+        print(f"  Next step: {snapshot.get('next_step', '') or 'not set'}")
+    print()
+    print("Safety note: Keep this personal and local. Do not paste secrets, passwords, tokens, institutional private data, or private work information.")
+    print()
+
+
 def print_latest_snapshot():
     entry = get_latest_snapshot()
 
@@ -216,7 +260,8 @@ def _prompt_project_fields(existing=None):
     last_finished = input(f"Last finished [{existing.get('last_finished', '')}]: ").strip() or existing.get("last_finished", "")
     blocker = input(f"Blocker [{existing.get('blocker', '')}]: ").strip() or existing.get("blocker", "")
     next_step = input(f"Next step [{existing.get('next_step', '')}]: ").strip() or existing.get("next_step", "")
-    return name, status, last_finished, blocker, next_step
+    priority = input(f"Priority [{existing.get('priority', '')}]: ").strip() or existing.get("priority", "")
+    return name, status, last_finished, blocker, next_step, priority
 
 
 def run_add_project():
@@ -226,7 +271,7 @@ def run_add_project():
     print()
 
     try:
-        name, status, last_finished, blocker, next_step = _prompt_project_fields()
+        name, status, last_finished, blocker, next_step, priority = _prompt_project_fields()
     except (KeyboardInterrupt, EOFError):
         print()
         print("Add project canceled.")
@@ -236,7 +281,7 @@ def run_add_project():
         print("Project not saved. A name is required.")
         return
 
-    _, project = upsert_project(name, status, last_finished, blocker, next_step)
+    _, project = upsert_project(name, status, last_finished, blocker, next_step, priority)
     print(f"Saved project: {project['name']}")
 
 
@@ -270,13 +315,13 @@ def run_update_project():
         return
 
     try:
-        name, status, last_finished, blocker, next_step = _prompt_project_fields(existing)
+        name, status, last_finished, blocker, next_step, priority = _prompt_project_fields(existing)
     except (KeyboardInterrupt, EOFError):
         print()
         print("Update project canceled.")
         return
 
-    _, project = upsert_project(name, status, last_finished, blocker, next_step)
+    _, project = upsert_project(name, status, last_finished, blocker, next_step, priority)
     print(f"Updated project: {project['name']}")
 
 

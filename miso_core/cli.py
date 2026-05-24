@@ -5,6 +5,7 @@ from miso_core.responder import answer_question
 from miso_core.voice import print_voice_status, speak
 from miso_core.workboard import (
     print_latest_snapshot,
+    print_project_handoff,
     print_project_resume,
     print_recap,
     run_add_project,
@@ -28,6 +29,7 @@ def print_help():
     print("  addproject             - Add a local workboard project")
     print("  updateproject          - Update a local workboard project")
     print("  resume <project>       - Show a project's next-step recap")
+    print("  handoff <project>      - Print a pasteable project handoff")
     print("  snapshot               - Save where you left off")
     print("  lastsnapshot           - Show the latest saved snapshot")
     print("  voice                  - Show voice output status")
@@ -180,6 +182,14 @@ def handle_command(command):
             print("Use: resume <project>")
         else:
             print_project_resume(project_name)
+        return True
+
+    if command_lower.startswith("handoff "):
+        project_name = command[8:].strip()
+        if not project_name:
+            print("Use: handoff <project>")
+        else:
+            print_project_handoff(project_name)
         return True
 
     if command_lower == "snapshot":
