@@ -2,6 +2,7 @@ from miso_core.checkin import print_latest_checkin, run_checkin
 from miso_core.identity import get_identity, print_identity
 from miso_core.memory import forget, list_memories, recall, remember
 from miso_core.responder import answer_question
+from miso_core.voice import print_voice_status, speak
 
 
 EXIT_COMMANDS = {"exit", "quit", "close", "bye", "goodbye"}
@@ -15,6 +16,8 @@ def print_help():
     print("  status                 - Show Miso status")
     print("  checkin                - Start a daily check-in")
     print("  lastcheckin            - Show the latest saved check-in")
+    print("  voice                  - Show voice output status")
+    print("  say <message>          - Speak a message out loud")
     print("  ask <question>         - Ask Miso a simple offline question")
     print("  remember <key> <value> - Save a local memory")
     print("  recall <key>           - Recall a local memory")
@@ -99,6 +102,21 @@ def handle_memories():
     print()
 
 
+
+def handle_say(command):
+    parts = command.split(maxsplit=1)
+
+    if len(parts) < 2:
+        print("Use: say <message>")
+        return
+
+    ok, message = speak(parts[1])
+
+    if ok:
+        print(f"Miso said: {message}")
+    else:
+        print(message)
+
 def handle_command(command):
     command = command.strip()
     command_lower = command.lower()
@@ -128,6 +146,14 @@ def handle_command(command):
 
     if command_lower in ("lastcheckin", "last checkin", "latest checkin"):
         print_latest_checkin()
+        return True
+
+    if command_lower == "voice":
+        print_voice_status()
+        return True
+
+    if command_lower.startswith("say "):
+        handle_say(command)
         return True
 
     if command_lower.startswith("ask "):
